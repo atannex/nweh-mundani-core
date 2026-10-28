@@ -1,0 +1,87 @@
+{
+    "name": "atannex/nweh-mundani-core",
+    "description": "Headless calendar engine for Laravel: register, calculate, compare and govern indigenous and custom calendars. Ships a complete arbitrary-length cyclic driver, versioned and auditable definitions, safe rules and observances, Unicode-exact terminology, provenance tracking and tenant isolation.",
+    "keywords": [
+        "laravel",
+        "calendar",
+        "indigenous-calendar",
+        "cyclic-calendar",
+        "market-days",
+        "lebialem",
+        "nweh",
+        "mundani"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/atannex/nweh-mundani-core",
+    "authors": [
+        {
+            "name": "Atangageih Leke Collins",
+            "email": "atangageihlekecollins@gmail.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/atannex/nweh-mundani-core/issues",
+        "source": "https://github.com/atannex/nweh-mundani-core"
+    },
+    "require": {
+        "php": "^8.3",
+        "illuminate/cache": "^12.0|^13.0",
+        "illuminate/console": "^12.0|^13.0",
+        "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/database": "^12.0|^13.0",
+        "illuminate/events": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0|^11.0",
+        "pestphp/pest": "^3.7|^4.0"
+    },
+    "suggest": {
+        "ext-intl": "Unicode NFC search keys for indigenous terminology. Without it, search keys fall back to the exact source string."
+    },
+    "autoload": {
+        "psr-4": {
+            "Atannex\\NwehMundani\\Core\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Atannex\\NwehMundani\\Core\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Atannex\\NwehMundani\\Core\\NwehMundaniServiceProvider"
+            ],
+            "aliases": {
+                "NwehMundani": "Atannex\\NwehMundani\\Core\\Facades\\NwehMundani"
+            }
+        },
+        "branch-alias": {
+            "dev-main": "1.x-dev"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "format": "pint",
+        "check": [
+            "@composer validate --strict",
+            "pint --test",
+            "@analyse",
+            "@test"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
