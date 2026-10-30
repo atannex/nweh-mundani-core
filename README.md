@@ -1,19 +1,17 @@
 # Nweh Mundani Core
 
-A headless calendar engine for Laravel. It registers, calculates, compares and governs calendar systems, including indigenous calendars that do not fit the Gregorian mould.
+A calendar engine for Laravel. It can describe and calculate any calendar, including indigenous calendars that do not use seven-day weeks or twelve months, such as the market-day cycles of the Nweh and Mundani people. It also covers the Gregorian, Julian, Islamic and Hebrew calendars. It converts dates between calendars, works out festivals and special days from rules, keeps each calendar's names exactly as written, records where the information came from, and keeps a history of every change.
 
-The engine does not assume seven-day weeks, twelve months, years, a single epoch, a single language or a single tradition. It ships four verified calculation drivers. **cyclic** handles repeating cycles of any positive length, with as many independent cycles per calendar as you need. **solar** covers Gregorian and Julian. **lunar-tabular** is the arithmetic Hijri calendar, and **lunisolar-hebrew** the arithmetic Hebrew calendar. Year/month/day calendars can also carry cycles. Around the drivers the package provides frontend-ready read models, a review-and-publish workflow, versioned and auditable definitions, safe rule-based observances with cancellable and reschedulable occurrences, terminology kept exactly as written in Unicode, provenance and verification tracking, and tenant isolation.
-
-## Development
+## Install
 
 ```bash
-composer install
-composer test        # Pest (unit, feature, persistence on in-memory SQLite)
-composer analyse     # PHPStan / Larastan, level 8
-composer format      # Laravel Pint
-composer check       # all of the above plus composer validate
+composer require atannex/nweh-mundani-core
 ```
+
+## Documentation
+
+The full guide is in [docs/overview.md](docs/overview.md).
 
 ## License
 
-MIT. See [LICENSE.md](LICENSE.md).
+MIT.
