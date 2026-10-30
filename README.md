@@ -7,11 +7,3 @@ A calendar engine for Laravel. It can describe and calculate any calendar, inclu
 ```bash
 composer require atannex/nweh-mundani-core
 ```
-
-## Documentation
-
-The full guide is in [docs/overview.md](docs/overview.md).
-
-## License
-
-MIT.
