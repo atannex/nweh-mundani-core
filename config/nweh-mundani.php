@@ -25,12 +25,18 @@ return [
     | Tenancy
     |--------------------------------------------------------------------------
     |
-    | A class implementing Atannex\NwehMundani\Core\Tenancy\TenantResolver.
-    | Null keeps everything in the global scope (single tenant).
+    | Who the current tenant is. Null keeps everything in the global scope
+    | (single tenant). "spatie" follows spatie/laravel-multitenancy's current
+    | tenant. Or give a class implementing
+    | Atannex\NwehMundani\Core\Tenancy\TenantResolver.
+    |
+    | With Spatie and a database per tenant (SwitchTenantDatabaseTask), the
+    | nmc_* tables live on the landlord connection unless
+    | persistence.connection says otherwise.
     |
     */
 
-    'tenant_resolver' => null,
+    'tenant_resolver' => env('NWEH_MUNDANI_TENANT_RESOLVER'),
 
     /*
     |--------------------------------------------------------------------------

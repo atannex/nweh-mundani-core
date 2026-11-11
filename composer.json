@@ -37,10 +37,12 @@
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.18",
         "orchestra/testbench": "^10.0|^11.0",
-        "pestphp/pest": "^3.7|^4.0"
+        "pestphp/pest": "^3.7|^4.0",
+        "spatie/laravel-multitenancy": "^4.3"
     },
     "suggest": {
-        "ext-intl": "Unicode NFC search keys for indigenous terminology. Without it, search keys fall back to the exact source string."
+        "ext-intl": "Unicode NFC search keys for indigenous terminology. Without it, search keys fall back to the exact source string.",
+        "spatie/laravel-multitenancy": "Multi-tenancy: set NWEH_MUNDANI_TENANT_RESOLVER=spatie to follow Spatie's current tenant."
     },
     "autoload": {
         "psr-4": {

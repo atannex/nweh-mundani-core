@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use Atannex\NwehMundani\Core\Application\CalendarWorkflowService;
 use Atannex\NwehMundani\Core\Domain\CalendarDefinition;
+use Atannex\NwehMundani\Core\Governance\SystemActor;
 use Atannex\NwehMundani\Core\Kernel\CalendarFactory;
+use Spatie\Multitenancy\Models\Tenant;
 
 /**
  * Definition array for a single-cycle calendar of $length positions p1..pN,
@@ -32,4 +35,22 @@ function cyclicCalendar(string $id = 'test', int $length = 8, string $anchorDate
 function definition(array $data, ?string $tenant = null): CalendarDefinition
 {
     return app(CalendarFactory::class)->fromArray($data, $tenant);
+}
+
+/** A Spatie tenant (spatie/laravel-multitenancy is a dev dependency). */
+function tenant(string $name, ?string $database = null): Tenant
+{
+    return Tenant::query()->forceCreate(['name' => $name, 'database' => $database]);
+}
+
+/** Draft, review, approve and publish in whatever tenant is current. */
+function publishHere(array $data): void
+{
+    $actor = new SystemActor('tests');
+    $workflow = app(CalendarWorkflowService::class);
+
+    $workflow->saveDraft($data, $actor);
+    $workflow->submitForReview($data['id'], $data['version'] ?? '1.0.0', $actor);
+    $workflow->approve($data['id'], $data['version'] ?? '1.0.0', $actor);
+    $workflow->publish($data['id'], $data['version'] ?? '1.0.0', $actor);
 }

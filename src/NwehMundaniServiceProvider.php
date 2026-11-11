@@ -67,6 +67,7 @@ use Atannex\NwehMundani\Core\Persistence\InMemory\InMemoryCalendarRepository;
 use Atannex\NwehMundani\Core\Persistence\InMemory\InMemoryObservanceRepository;
 use Atannex\NwehMundani\Core\Persistence\InMemory\InMemorySourceRepository;
 use Atannex\NwehMundani\Core\Persistence\InMemory\InMemoryTranslationRepository;
+use Atannex\NwehMundani\Core\Persistence\StorageConnection;
 use Atannex\NwehMundani\Core\Rules\Handlers\CyclePositionHandler;
 use Atannex\NwehMundani\Core\Rules\Handlers\FixedDateHandler;
 use Atannex\NwehMundani\Core\Rules\Handlers\OccurrencesHandler;
@@ -75,9 +76,14 @@ use Atannex\NwehMundani\Core\Rules\Handlers\RelativeHandler;
 use Atannex\NwehMundani\Core\Rules\RuleHandler;
 use Atannex\NwehMundani\Core\Rules\RuleRegistry;
 use Atannex\NwehMundani\Core\Tenancy\NullTenantResolver;
+use Atannex\NwehMundani\Core\Tenancy\SpatieMultitenancy;
+use Atannex\NwehMundani\Core\Tenancy\SpatieTenantResolver;
 use Atannex\NwehMundani\Core\Tenancy\TenantResolver;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\ServiceProvider;
@@ -98,6 +104,10 @@ final class NwehMundaniServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/nweh-mundani.php', 'nweh-mundani');
+
+        // Taken before any tenant is made current: tenancy packages (Spatie's
+        // PrefixCacheTask, for one) change cache.prefix per tenant at runtime.
+        $cachePrefix = config('cache.prefix');
 
         $this->app->singleton(DriverRegistry::class, function (Container $app): DriverRegistry {
             $registry = new DriverRegistry($app);
@@ -153,7 +163,11 @@ final class NwehMundaniServiceProvider extends ServiceProvider
         $this->app->singleton(TenantResolver::class, function (Container $app): TenantResolver {
             $class = config('nweh-mundani.tenant_resolver');
 
-            return is_string($class) ? $this->trusted($app->make($class), TenantResolver::class) : new NullTenantResolver;
+            return match (true) {
+                $class === SpatieMultitenancy::ALIAS => new SpatieTenantResolver,
+                is_string($class) && $class !== '' => $this->trusted($class, TenantResolver::class),
+                default => new NullTenantResolver,
+            };
         });
 
         $this->app->singleton(CalendarAuthorizer::class, function (Container $app): CalendarAuthorizer {
@@ -162,12 +176,11 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             return $this->trusted($app->make(is_string($class) ? $class : GateCalendarAuthorizer::class), CalendarAuthorizer::class);
         });
 
-        $this->app->singleton(DefinitionCache::class, function (Container $app): DefinitionCache {
+        $this->app->singleton(DefinitionCache::class, function (Container $app) use ($cachePrefix): DefinitionCache {
             $store = null;
 
             if (config('nweh-mundani.cache.enabled') && $app->bound('cache')) {
-                $name = config('nweh-mundani.cache.store');
-                $store = $app->make('cache')->store(is_string($name) ? $name : null);
+                $store = self::cacheStore($app->make('cache'), config('nweh-mundani.cache.store'), $cachePrefix);
             }
 
             $prefix = config('nweh-mundani.cache.prefix', 'nmc');
@@ -307,13 +320,18 @@ final class NwehMundaniServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        if (config('nweh-mundani.persistence.enabled') && config('nweh-mundani.persistence.migrations', true)) {
+        // With a database per tenant, the tables belong to the landlord
+        // database. Loading the migrations would also run them from
+        // `tenants:artisan migrate`, so they are published to the landlord
+        // path instead (nweh-mundani-landlord-migrations).
+        if (config('nweh-mundani.persistence.enabled') && config('nweh-mundani.persistence.migrations', true) && ! SpatieMultitenancy::databasePerTenant()) {
             $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         }
 
         if ($this->app->runningInConsole()) {
             $this->publishes([__DIR__.'/../config/nweh-mundani.php' => config_path('nweh-mundani.php')], 'nweh-mundani-config');
             $this->publishes([__DIR__.'/../database/migrations' => database_path('migrations')], 'nweh-mundani-migrations');
+            $this->publishes([__DIR__.'/../database/migrations' => database_path('migrations/landlord')], 'nweh-mundani-landlord-migrations');
 
             $this->commands([
                 ListCommand::class,
@@ -347,9 +365,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
         $this->app->singleton(AuditTrail::class, static fn (): AuditTrail => $enabled() ? new EloquentAuditTrail : new InMemoryAuditTrail);
 
         $this->app->singleton(UnitOfWork::class, static function (Container $app) use ($enabled): UnitOfWork {
-            $connection = config('nweh-mundani.persistence.connection');
-
-            return $enabled() ? new DatabaseUnitOfWork($app->make('db'), is_string($connection) ? $connection : null) : new ImmediateUnitOfWork;
+            return $enabled() ? new DatabaseUnitOfWork($app->make('db'), StorageConnection::name()) : new ImmediateUnitOfWork;
         });
     }
 
@@ -435,6 +451,24 @@ final class NwehMundaniServiceProvider extends ServiceProvider
     private function tagged(string $tag): array
     {
         return iterator_to_array($this->app->tagged($tag), false);
+    }
+
+    /**
+     * The package's cache store, pinned to the prefix the app booted with.
+     * Entries are already keyed by tenant, so one shared prefix is correct;
+     * a per-tenant prefix would let one tenant's write leave the others'
+     * copies of global calendars stale.
+     */
+    private static function cacheStore(CacheFactory $cache, mixed $name, mixed $prefix): Repository
+    {
+        $name = is_string($name) && $name !== '' ? $name : config('cache.default');
+        $config = is_string($name) ? config("cache.stores.{$name}") : null;
+
+        if ($cache instanceof CacheManager && is_array($config) && ! isset($config['prefix']) && is_string($prefix)) {
+            return $cache->build([...$config, 'prefix' => $prefix]);
+        }
+
+        return $cache->store(is_string($name) ? $name : null);
     }
 
     /**

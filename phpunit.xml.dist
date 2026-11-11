@@ -14,6 +14,9 @@
         <testsuite name="Persistence">
             <directory>tests/Persistence</directory>
         </testsuite>
+        <testsuite name="Tenancy">
+            <directory>tests/Tenancy</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

@@ -11,7 +11,10 @@ use Atannex\NwehMundani\Core\Persistence\Contracts\CalendarRepository;
 use Atannex\NwehMundani\Core\Persistence\Contracts\ObservanceRepository;
 use Atannex\NwehMundani\Core\Persistence\Contracts\SourceRepository;
 use Atannex\NwehMundani\Core\Persistence\Eloquent\EloquentCalendarRepository;
+use Atannex\NwehMundani\Core\Persistence\StorageConnection;
 use Atannex\NwehMundani\Core\Rules\RuleRegistry;
+use Atannex\NwehMundani\Core\Tenancy\SpatieMultitenancy;
+use Atannex\NwehMundani\Core\Tenancy\SpatieTenantResolver;
 use Atannex\NwehMundani\Core\Tenancy\TenantResolver;
 use Throwable;
 
@@ -51,14 +54,15 @@ final readonly class CalendarDiagnostics
 
         $checks[] = new DiagnosticCheck('rule-handlers', DiagnosticStatus::Ok, implode(', ', $this->rules->types()));
 
-        $tenant = $this->tenants::class;
-        $checks[] = new DiagnosticCheck('tenancy', DiagnosticStatus::Ok, "resolver {$tenant}");
+        $checks[] = $this->tenancy();
 
         if ($this->persistenceEnabled) {
             $ready = $this->calendars->isAvailable() && $this->observances->isAvailable() && $this->sources->isAvailable();
             $checks[] = $ready
                 ? new DiagnosticCheck('persistence', DiagnosticStatus::Ok, $this->calendars instanceof EloquentCalendarRepository ? 'database tables present' : 'custom repository available')
-                : new DiagnosticCheck('persistence', DiagnosticStatus::Failure, 'enabled but the nmc_* tables are missing: run `php artisan migrate`, or set NWEH_MUNDANI_PERSISTENCE=false');
+                : new DiagnosticCheck('persistence', DiagnosticStatus::Failure, SpatieMultitenancy::databasePerTenant()
+                    ? 'enabled but the nmc_* tables are missing from the ['.(StorageConnection::name() ?? 'default').'] connection: run `php artisan vendor:publish --tag=nweh-mundani-landlord-migrations`, then your landlord migrations'
+                    : 'enabled but the nmc_* tables are missing: run `php artisan migrate`, or set NWEH_MUNDANI_PERSISTENCE=false');
         } else {
             $checks[] = new DiagnosticCheck('persistence', DiagnosticStatus::Ok, 'disabled: code-registered definitions and in-memory storage only');
         }
@@ -90,5 +94,27 @@ final readonly class CalendarDiagnostics
         }
 
         return $checks;
+    }
+
+    private function tenancy(): DiagnosticCheck
+    {
+        if (! $this->tenants instanceof SpatieTenantResolver) {
+            return new DiagnosticCheck('tenancy', DiagnosticStatus::Ok, 'resolver '.$this->tenants::class);
+        }
+
+        $current = $this->tenants->current();
+        $detail = 'spatie/laravel-multitenancy, current tenant: '.($current === null ? 'none (global scope)' : $current);
+
+        if (! $this->persistenceEnabled || ! SpatieMultitenancy::switchesDatabase()) {
+            return new DiagnosticCheck('tenancy', DiagnosticStatus::Ok, "{$detail}; shared database");
+        }
+
+        $storage = StorageConnection::name();
+
+        if ($storage === SpatieMultitenancy::tenantConnection()) {
+            return new DiagnosticCheck('tenancy', DiagnosticStatus::Failure, "{$detail}; the nmc_* tables are on the tenant connection [{$storage}], so they would switch with every tenant and global calendars would not be shared. Point NWEH_MUNDANI_DB_CONNECTION at the landlord connection.");
+        }
+
+        return new DiagnosticCheck('tenancy', DiagnosticStatus::Ok, "{$detail}; a database per tenant, nmc_* tables on [".($storage ?? 'default').']');
     }
 }

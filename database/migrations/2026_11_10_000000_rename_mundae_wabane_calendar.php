@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Atannex\NwehMundani\Core\Cache\DefinitionCache;
+use Atannex\NwehMundani\Core\Persistence\StorageConnection;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Collection;
@@ -27,9 +28,7 @@ return new class extends Migration
 
     public function getConnection(): ?string
     {
-        $connection = config('nweh-mundani.persistence.connection');
-
-        return is_string($connection) ? $connection : null;
+        return StorageConnection::name();
     }
 
     public function up(): void

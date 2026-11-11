@@ -168,6 +168,31 @@ Every call can be scoped to a tenant. Each tenant sees its own calendars and eve
 NwehMundani::forTenant($team->id)->calendar('nweh');
 ```
 
+### With spatie/laravel-multitenancy
+
+Set one value and the package follows Spatie's current tenant, in requests, queued jobs and `tenants:artisan` commands:
+
+```env
+NWEH_MUNDANI_TENANT_RESOLVER=spatie
+```
+
+When no tenant is current, you're in the global scope. Calendars published there are shared with every tenant.
+
+If all your tenants share one database, that's all. Run `php artisan migrate` as usual.
+
+If each tenant has its own database (`SwitchTenantDatabaseTask`), the package keeps its tables in the landlord database. That way global calendars stay shared, and the `tenant_key` column keeps tenants apart. Publish the migrations next to your other landlord migrations and run them there:
+
+```bash
+php artisan vendor:publish --tag=nweh-mundani-landlord-migrations
+php artisan migrate --path=database/migrations/landlord --database=landlord
+```
+
+The landlord connection comes from Spatie's `landlord_database_connection_name`. Set `NWEH_MUNDANI_DB_CONNECTION` to use a different one. `php artisan nweh-mundani:diagnose` tells you if the tables ended up on the tenant connection by mistake.
+
+Spatie's `PrefixCacheTask` is fine to use. The package keeps its own cache entries under one prefix and separates tenants itself, so updating a shared calendar from one tenant doesn't leave other tenants with a stale copy.
+
+To work out the tenant some other way, write a class that implements `Atannex\NwehMundani\Core\Tenancy\TenantResolver` and set `tenant_resolver` in the config to that class.
+
 ## Artisan commands
 
 ```bash
