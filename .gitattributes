@@ -2,7 +2,6 @@
 
 # Kept in the repository, left out of the Composer dist archive.
 /.github            export-ignore
-/docs               export-ignore
 /tests              export-ignore
 /.editorconfig      export-ignore
 /.gitattributes     export-ignore
