@@ -11,6 +11,7 @@ use Atannex\NwehMundani\Core\Governance\Source;
 use Atannex\NwehMundani\Core\Governance\SystemActor;
 use Atannex\NwehMundani\Core\Kernel\CalendarContext;
 use Atannex\NwehMundani\Core\Kernel\CalendarFactory;
+use Atannex\NwehMundani\Core\Persistence\Contracts\AuditTrail;
 use Atannex\NwehMundani\Core\Persistence\Contracts\CalendarRepository;
 use Atannex\NwehMundani\Core\Persistence\Contracts\SourceRepository;
 use Illuminate\Console\Command;
@@ -20,6 +21,10 @@ use Illuminate\Console\Command;
  * global calendars. Idempotent: identical content is skipped, and a
  * calendar that already exists with different content (edited locally, or
  * a newer version) is reported and left untouched.
+ *
+ * The one exception is an upgrade: when the bundled version is newer and the
+ * stored one was itself published by this command, nobody has changed it
+ * locally, so the bundled version is published over it.
  */
 final class SeedExamplesCommand extends Command
 {
@@ -27,7 +32,7 @@ final class SeedExamplesCommand extends Command
 
     protected $description = "Store the Nweh, Mundani (Wabane), M'Mouck and M'Mock reference calendars in the database";
 
-    public function handle(CalendarRepository $calendars, SourceRepository $sources, CalendarWorkflowService $workflow, CalendarFactory $factory): int
+    public function handle(CalendarRepository $calendars, SourceRepository $sources, CalendarWorkflowService $workflow, CalendarFactory $factory, AuditTrail $audit): int
     {
         if (! config('nweh-mundani.persistence.enabled')) {
             $this->components->error('Persistence is disabled (NWEH_MUNDANI_PERSISTENCE=false). The examples are still available in code when nweh-mundani.examples.register is true.');
@@ -70,7 +75,11 @@ final class SeedExamplesCommand extends Command
                 continue;
             }
 
-            if ($existing !== null || ($published !== null && $published->version->number !== $version)) {
+            $upgrade = $existing === null && $published !== null
+                && version_compare($version, $published->version->number, '>')
+                && $this->publishedBy($audit, $id, $actor->name);
+
+            if (! $upgrade && ($existing !== null || ($published !== null && $published->version->number !== $version))) {
                 $this->components->twoColumnDetail($id, '<fg=yellow>skipped</>: a stored version (v'.($existing ?? $published)->version->number.') differs from the bundled one; it was not overwritten');
 
                 continue;
@@ -85,9 +94,18 @@ final class SeedExamplesCommand extends Command
                 $workflow->publish($id, $version, $actor, $context);
             }
 
-            $this->components->twoColumnDetail($id, $dry ? "would publish v{$version}" : "<fg=green>published v{$version}</>");
+            $from = $upgrade ? " (was v{$published->version->number})" : '';
+            $this->components->twoColumnDetail($id, $dry ? "would publish v{$version}{$from}" : "<fg=green>published v{$version}</>{$from}");
         }
 
         return self::SUCCESS;
+    }
+
+    /** Whether the calendar's current published version was published by $actor. */
+    private function publishedBy(AuditTrail $audit, string $id, string $actor): bool
+    {
+        $published = array_values(array_filter($audit->revisions('', 'calendar', $id), static fn ($entry): bool => $entry->action === 'published'));
+
+        return $published !== [] && end($published)->actor === $actor;
     }
 }

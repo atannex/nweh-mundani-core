@@ -35,7 +35,7 @@ it('stores and reloads a definition exactly, Unicode and all', function () {
     $definition = definition([...$data, 'status' => 'draft']);
 
     repo()->saveDraft($definition);
-    $loaded = repo()->findVersion('', 'mundani-wabane', '1.0.0');
+    $loaded = repo()->findVersion('', 'mundani-wabane', '1.1.0');
 
     expect($loaded?->contentHash())->toBe($definition->contentHash())
         ->and(bin2hex($loaded->cycles[0]->positions[0]->label->original))->toBe(bin2hex('Aghà̧'))

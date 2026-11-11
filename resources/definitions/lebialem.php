@@ -19,15 +19,16 @@ declare(strict_types=1);
  * M'Mouck and M'Mock are separate calendars and are deliberately not merged.
  *
  * Earlier spellings of the calendar names (Mundae (Wabane), Mmouck, Mmock)
- * are kept as alternates so searches for them still match.
+ * are kept as alternates so searches for them still match. The renamed
+ * calendars are version 1.1.0, so seed-examples can upgrade stored copies.
  */
 
 $source = 'atannex-maintainer-2026-10';
 
-$calendar = static function (string $id, string $name, array $positions, array $alternates = []) use ($source): array {
+$calendar = static function (string $id, string $name, array $positions, array $alternates = [], string $version = '1.0.0') use ($source): array {
     return [
         'id' => $id,
-        'version' => '1.0.0',
+        'version' => $version,
         'status' => 'published',
         'name' => ['original' => $name, 'alternates' => $alternates],
         'driver' => 'cyclic',
@@ -91,7 +92,7 @@ return [
             ['ewenela', 'Èwenelà̧'],
             ['nkwanye', 'Nkwanyȩ'],
             ['mendee', 'Mèndeè'],
-        ], ['Mundae (Wabane)']),
+        ], ['Mundae (Wabane)'], '1.1.0'),
 
         $calendar('mmouck', 'M\'Mouck', [
             ['nganga', 'Ngangà'],
@@ -102,7 +103,7 @@ return [
             ['njoeelekoer', 'Njœêlekœr̄'],
             ['faa', 'Faꞌà'],
             ['telang', 'Télǎng'],
-        ], ['Mmouck']),
+        ], ['Mmouck'], '1.1.0'),
 
         $calendar('mmock', 'M\'Mock', [
             ['nganga', 'Ngangà'],
@@ -113,6 +114,6 @@ return [
             ['njoeelekoer', 'Njœêlekœr̄'],
             ['faa', 'Faꞌà'],
             ['telang', 'Télǎng'],
-        ], ['Mmock']),
+        ], ['Mmock'], '1.1.0'),
     ],
 ];
