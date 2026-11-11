@@ -37,7 +37,7 @@ return [
     | Code-registered calendars
     |--------------------------------------------------------------------------
     |
-    | calendars: definition arrays (see docs/definitions.md).
+    | calendars: definition arrays (see "Adding your own calendar" in the README).
     | observances / sources: arrays in the same shape as the repositories store.
     | providers: classes implementing CalendarDefinitionProvider.
     | versions: pin a calendar id to a version instead of the newest one.
