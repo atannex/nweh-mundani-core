@@ -30,8 +30,8 @@ it('supports the documented API', function () {
     $date = $calendar->fromCivil('2026-10-28');
 
     expect($date->cycle('traditional-days')->label())->toBe('Amina')
-        ->and(NwehMundani::compare('2026-10-28', ['nweh', 'mundae-wabane', 'mmouck', 'mmock']))->toBeInstanceOf(CalendarDateComparison::class)
-        ->and(array_keys(NwehMundani::calendars()))->toBe(['mmock', 'mmouck', 'mundae-wabane', 'nweh'])
+        ->and(NwehMundani::compare('2026-10-28', ['nweh', 'mundani-wabane', 'mmouck', 'mmock']))->toBeInstanceOf(CalendarDateComparison::class)
+        ->and(array_keys(NwehMundani::calendars()))->toBe(['mmock', 'mmouck', 'mundani-wabane', 'nweh'])
         ->and(NwehMundani::calendars())->each->toBeInstanceOf(Calendar::class)
         ->and($calendar->capabilities()->has(Capability::FromCivil))->toBeTrue()
         ->and($calendar->capabilities()->has(Capability::ToCivil))->toBeFalse()
@@ -187,7 +187,7 @@ it('bulk-converts ranges', function () {
 });
 
 it('accepts position names in any Unicode composition as well as identifiers', function () {
-    $calendar = NwehMundani::calendar('mundae-wabane');
+    $calendar = NwehMundani::calendar('mundani-wabane');
     $decomposed = "Ke\u{0300}lu\u{0327}"; // the supplied spelling uses precomposed è (U+00E8)
 
     expect((string) $calendar->nextOccurrence($decomposed, '2026-10-01'))->toBe('2026-10-04')

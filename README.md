@@ -28,7 +28,7 @@ If you don't need a database, set `NWEH_MUNDANI_PERSISTENCE=false`. Calendars re
 
 ## Reading a date
 
-Four Lebialem calendars ship with the package: `nweh`, `mundae-wabane`, `mmouck` and `mmock`. Each one is an eight-day cycle.
+Four Lebialem calendars ship with the package: Nweh (`nweh`), Mundani (Wabane) (`mundani-wabane`), M'Mouck (`mmouck`) and M'Mock (`mmock`). Each one is an eight-day cycle.
 
 ```php
 use Atannex\NwehMundani\Core\Facades\NwehMundani;
@@ -50,7 +50,7 @@ Compare one day across every calendar:
 
 ```php
 NwehMundani::compare('2026-10-28')->labels();
-// ['mmock' => 'Ngong', 'mmouck' => 'Njœêngong', 'mundae-wabane' => 'Kèlu̧', 'nweh' => 'Amina']
+// ['mmock' => 'Ngong', 'mmouck' => 'Njœêngong', 'mundani-wabane' => 'Kèlu̧', 'nweh' => 'Amina']
 ```
 
 Find when a day comes round again:

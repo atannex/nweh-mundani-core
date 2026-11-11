@@ -35,14 +35,14 @@ it('stores and reloads a definition exactly, Unicode and all', function () {
     $definition = definition([...$data, 'status' => 'draft']);
 
     repo()->saveDraft($definition);
-    $loaded = repo()->findVersion('', 'mundae-wabane', '1.0.0');
+    $loaded = repo()->findVersion('', 'mundani-wabane', '1.0.0');
 
     expect($loaded?->contentHash())->toBe($definition->contentHash())
         ->and(bin2hex($loaded->cycles[0]->positions[0]->label->original))->toBe(bin2hex('Aghà̧'))
         ->and($loaded->cycles[0]->positions[0]->label->alternates)->toBe(["Agh\u{0061}\u{0300}\u{0327}"])
         ->and($loaded->cycles[0]->positions[0]->label->label('fr'))->toBe('Premier jour')
         ->and($loaded->version->status)->toBe(VersionStatus::Draft)
-        ->and(repo()->findPublished('', 'mundae-wabane'))->toBeNull();
+        ->and(repo()->findPublished('', 'mundani-wabane'))->toBeNull();
 });
 
 it('publishes atomically and supersedes the previous version', function () {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 it('lists calendars', function () {
     $this->artisan('nweh-mundani:list')
-        ->expectsOutputToContain('mundae-wabane')
+        ->expectsOutputToContain('mundani-wabane')
         ->expectsOutputToContain('traditional-days (8)')
         ->assertSuccessful();
 });
@@ -26,7 +26,7 @@ it('converts a date', function () {
 });
 
 it('prints JSON with the exact original spelling', function () {
-    $this->artisan('nweh-mundani:date mundae-wabane 2026-10-01 --json')
+    $this->artisan('nweh-mundani:date mundani-wabane 2026-10-01 --json')
         ->expectsOutputToContain('"original": "Aghà̧"')
         ->assertSuccessful();
 });

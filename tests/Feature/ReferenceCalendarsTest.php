@@ -10,7 +10,7 @@ beforeEach(function () {
 });
 
 it('registers reference calendars only when asked', function () {
-    expect(array_keys(NwehMundani::calendars()))->toBe(['gregorian', 'hebrew', 'hijri-tabular', 'julian', 'mmock', 'mmouck', 'mundae-wabane', 'nweh']);
+    expect(array_keys(NwehMundani::calendars()))->toBe(['gregorian', 'hebrew', 'hijri-tabular', 'julian', 'mmock', 'mmouck', 'mundani-wabane', 'nweh']);
 });
 
 it('serves year/month/day calendars through the same read models', function () {

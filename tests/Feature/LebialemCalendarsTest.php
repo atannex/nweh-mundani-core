@@ -9,7 +9,7 @@ use Atannex\NwehMundani\Core\Kernel\CalendarManager;
 use Atannex\NwehMundani\Core\Kernel\CalendarRegistry;
 use Atannex\NwehMundani\Core\Kernel\CalendarResolver;
 
-dataset('calendars', ['nweh', 'mundae-wabane', 'mmouck', 'mmock']);
+dataset('calendars', ['nweh', 'mundani-wabane', 'mmouck', 'mmock']);
 
 function dayOn(string $calendar, string $date): string
 {
@@ -18,19 +18,19 @@ function dayOn(string $calendar, string $date): string
 
 it('resolves 1 October 2026 to the anchor day of each calendar', function () {
     expect(dayOn('nweh', '2026-10-01'))->toBe('Ankoah')
-        ->and(dayOn('mundae-wabane', '2026-10-01'))->toBe('Aghà̧')
+        ->and(dayOn('mundani-wabane', '2026-10-01'))->toBe('Aghà̧')
         ->and(dayOn('mmouck', '2026-10-01'))->toBe('Ngangà')
         ->and(dayOn('mmock', '2026-10-01'))->toBe('Ngangà');
 });
 
 it('resolves 2 October 2026 to the second day of each calendar', function () {
     expect(dayOn('nweh', '2026-10-02'))->toBe('Anzoah')
-        ->and(dayOn('mundae-wabane', '2026-10-02'))->toBe('Abùꞌ')
+        ->and(dayOn('mundani-wabane', '2026-10-02'))->toBe('Abùꞌ')
         ->and(dayOn('mmouck', '2026-10-02'))->toBe('Mbeqgnúá')
         ->and(dayOn('mmock', '2026-10-02'))->toBe('Betaâgnúá');
 });
 
-it('keeps Mmouck and Mmock distinct on 4 October 2026', function () {
+it("keeps M'Mouck and M'Mock distinct on 4 October 2026", function () {
     expect(dayOn('mmouck', '2026-10-04'))->toBe('Njœêngong')
         ->and(dayOn('mmock', '2026-10-04'))->toBe('Ngong');
 });
@@ -47,7 +47,7 @@ it('lists all eight days in the supplied order', function () {
     $labels = fn (string $id) => array_map(fn (string $d) => dayOn($id, $d), ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08']);
 
     expect($labels('nweh'))->toBe(['Ankoah', 'Anzoah', 'Alena', 'Amina', 'Afeah', 'Agong', 'Aseih', 'Alung'])
-        ->and($labels('mundae-wabane'))->toBe(['Aghà̧', 'Abùꞌ', 'Ngȩ̀', 'Kèlu̧', 'Èwenesa̧', 'Èwenelà̧', 'Nkwanyȩ', 'Mèndeè'])
+        ->and($labels('mundani-wabane'))->toBe(['Aghà̧', 'Abùꞌ', 'Ngȩ̀', 'Kèlu̧', 'Èwenesa̧', 'Èwenelà̧', 'Nkwanyȩ', 'Mèndeè'])
         ->and($labels('mmouck'))->toBe(['Ngangà', 'Mbeqgnúá', 'Mbeqlěq', 'Njœêngong', 'Mbeqńkœó', 'Njœêlekœr̄', 'Faꞌà', 'Télǎng'])
         ->and($labels('mmock'))->toBe(['Ngangà', 'Betaâgnúá', 'Mbeqlěq', 'Ngong', 'Mbeqńkœó', 'Njœêlekœr̄', 'Faꞌà', 'Télǎng']);
 });
@@ -56,10 +56,10 @@ it('stores the supplied spellings code point for code point', function () {
     $codepoints = fn (string $s): string => implode(' ', array_map(fn ($c) => sprintf('%04X', mb_ord($c)), mb_str_split($s)));
 
     // Written with escapes so this test does not depend on how an editor composes them.
-    expect($codepoints(dayOn('mundae-wabane', '2026-10-01')))->toBe($codepoints("Agh\u{00E0}\u{0327}"))
-        ->and($codepoints(dayOn('mundae-wabane', '2026-10-02')))->toBe($codepoints("Ab\u{00F9}\u{A78C}"))
-        ->and($codepoints(dayOn('mundae-wabane', '2026-10-03')))->toBe($codepoints("Ng\u{0229}\u{0300}"))
-        ->and($codepoints(dayOn('mundae-wabane', '2026-10-04')))->toBe($codepoints("K\u{00E8}lu\u{0327}"))
+    expect($codepoints(dayOn('mundani-wabane', '2026-10-01')))->toBe($codepoints("Agh\u{00E0}\u{0327}"))
+        ->and($codepoints(dayOn('mundani-wabane', '2026-10-02')))->toBe($codepoints("Ab\u{00F9}\u{A78C}"))
+        ->and($codepoints(dayOn('mundani-wabane', '2026-10-03')))->toBe($codepoints("Ng\u{0229}\u{0300}"))
+        ->and($codepoints(dayOn('mundani-wabane', '2026-10-04')))->toBe($codepoints("K\u{00E8}lu\u{0327}"))
         ->and($codepoints(dayOn('mmouck', '2026-10-06')))->toBe($codepoints("Nj\u{0153}\u{00EA}lek\u{0153}r\u{0304}"))
         ->and($codepoints(dayOn('mmock', '2026-10-07')))->toBe($codepoints("Fa\u{A78C}\u{00E0}"));
 });
@@ -74,8 +74,8 @@ it('resolves dates before the anchor', function () {
 
 it('resolves 28 October 2026', function () {
     // 27 days after the anchor: 27 mod 8 = 3 → fourth day.
-    expect(NwehMundani::compare('2026-10-28', ['nweh', 'mundae-wabane', 'mmouck', 'mmock'])->labels())
-        ->toBe(['nweh' => 'Amina', 'mundae-wabane' => 'Kèlu̧', 'mmouck' => 'Njœêngong', 'mmock' => 'Ngong']);
+    expect(NwehMundani::compare('2026-10-28', ['nweh', 'mundani-wabane', 'mmouck', 'mmock'])->labels())
+        ->toBe(['nweh' => 'Amina', 'mundani-wabane' => 'Kèlu̧', 'mmouck' => 'Njœêngong', 'mmock' => 'Ngong']);
 });
 
 it('marks extrapolated days as resting on the continuous-repetition assumption', function () {
@@ -106,4 +106,13 @@ it('can be switched off', function () {
     NwehMundani::clearResolvedInstances();
 
     expect(NwehMundani::calendars())->toBe([]);
+});
+
+it('uses the current calendar names and still matches the earlier spellings', function () {
+    $names = array_map(fn (string $id) => NwehMundani::calendar($id)->name(), ['nweh', 'mundani-wabane', 'mmouck', 'mmock']);
+
+    expect($names)->toBe(['Nweh', 'Mundani (Wabane)', "M'Mouck", "M'Mock"])
+        ->and(NwehMundani::calendar('mundani-wabane')->definition()->name->matches('Mundae (Wabane)'))->toBeTrue()
+        ->and(NwehMundani::calendar('mmock')->definition()->name->matches('Mmock'))->toBeTrue()
+        ->and(NwehMundani::has('mundae-wabane'))->toBeFalse();
 });

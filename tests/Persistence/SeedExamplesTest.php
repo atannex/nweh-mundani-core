@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 it('seeds the four calendars and their source', function () {
     $this->artisan('nweh-mundani:seed-examples')->expectsOutputToContain('published v1.0.0')->assertSuccessful();
 
-    expect(DB::table('nmc_calendars')->orderBy('identifier')->pluck('identifier')->all())->toBe(['mmock', 'mmouck', 'mundae-wabane', 'nweh'])
+    expect(DB::table('nmc_calendars')->orderBy('identifier')->pluck('identifier')->all())->toBe(['mmock', 'mmouck', 'mundani-wabane', 'nweh'])
         ->and(DB::table('nmc_calendar_versions')->where('status', 'published')->count())->toBe(4)
         ->and(DB::table('nmc_cycle_positions')->count())->toBe(32)
         ->and(DB::table('nmc_sources')->value('identifier'))->toBe('atannex-maintainer-2026-10')
@@ -34,7 +34,7 @@ it('serves the seeded calendars from the database with identical results', funct
 
     expect(NwehMundani::compare('2026-10-28')->labels())->toBe($before)
         // Stored versions carry a publication time; code-registered ones do not.
-        ->and(NwehMundani::calendar('mundae-wabane')->definition()->version->publishedAt)->not->toBeNull();
+        ->and(NwehMundani::calendar('mundani-wabane')->definition()->version->publishedAt)->not->toBeNull();
 });
 
 it('never overwrites a calendar that was changed locally', function () {

@@ -25,7 +25,7 @@ final class SeedExamplesCommand extends Command
 {
     protected $signature = 'nweh-mundani:seed-examples {--dry-run : Report what would happen without writing}';
 
-    protected $description = 'Store the Nweh, Mundae (Wabane), Mmouck and Mmock reference calendars in the database';
+    protected $description = "Store the Nweh, Mundani (Wabane), M'Mouck and M'Mock reference calendars in the database";
 
     public function handle(CalendarRepository $calendars, SourceRepository $sources, CalendarWorkflowService $workflow, CalendarFactory $factory): int
     {

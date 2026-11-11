@@ -16,17 +16,20 @@ declare(strict_types=1);
  * days, ceremonial or religious meanings are recorded, because none have
  * been supplied with sources.
  *
- * Mmouck and Mmock are separate calendars and are deliberately not merged.
+ * M'Mouck and M'Mock are separate calendars and are deliberately not merged.
+ *
+ * Earlier spellings of the calendar names (Mundae (Wabane), Mmouck, Mmock)
+ * are kept as alternates so searches for them still match.
  */
 
 $source = 'atannex-maintainer-2026-10';
 
-$calendar = static function (string $id, string $name, array $positions) use ($source): array {
+$calendar = static function (string $id, string $name, array $positions, array $alternates = []) use ($source): array {
     return [
         'id' => $id,
         'version' => '1.0.0',
         'status' => 'published',
-        'name' => ['original' => $name],
+        'name' => ['original' => $name, 'alternates' => $alternates],
         'driver' => 'cyclic',
         'metadata' => [
             'region' => 'Lebialem',
@@ -61,7 +64,7 @@ return [
     'sources' => [[
         'id' => $source,
         'kind' => 'contributed',
-        'title' => 'Day names, their order and the 2026-10-01 alignment for Nweh, Mundae (Wabane), Mmouck and Mmock, as supplied by the atannex/nweh-mundani-core maintainer.',
+        'title' => 'Day names, their order and the 2026-10-01 alignment for Nweh, Mundani (Wabane), "M\'Mouck" and "M\'Mock", as supplied by the atannex/nweh-mundani-core maintainer.',
         'recorded_on' => '2026-10-28',
         'status' => 'submitted',
         'notes' => 'Not yet traced to a documentary source, an oral-history recording or a named community custodian.',
@@ -79,7 +82,7 @@ return [
             ['alung', 'Alung'],
         ]),
 
-        $calendar('mundae-wabane', 'Mundae (Wabane)', [
+        $calendar('mundani-wabane', 'Mundani (Wabane)', [
             ['agha', 'Aghà̧'],
             ['abu', 'Abùꞌ'],
             ['nge', 'Ngȩ̀'],
@@ -88,9 +91,9 @@ return [
             ['ewenela', 'Èwenelà̧'],
             ['nkwanye', 'Nkwanyȩ'],
             ['mendee', 'Mèndeè'],
-        ]),
+        ], ['Mundae (Wabane)']),
 
-        $calendar('mmouck', 'Mmouck', [
+        $calendar('mmouck', 'M\'Mouck', [
             ['nganga', 'Ngangà'],
             ['mbeqgnua', 'Mbeqgnúá'],
             ['mbeqleq', 'Mbeqlěq'],
@@ -99,9 +102,9 @@ return [
             ['njoeelekoer', 'Njœêlekœr̄'],
             ['faa', 'Faꞌà'],
             ['telang', 'Télǎng'],
-        ]),
+        ], ['Mmouck']),
 
-        $calendar('mmock', 'Mmock', [
+        $calendar('mmock', 'M\'Mock', [
             ['nganga', 'Ngangà'],
             ['betaagnua', 'Betaâgnúá'],
             ['mbeqleq', 'Mbeqlěq'],
@@ -110,6 +113,6 @@ return [
             ['njoeelekoer', 'Njœêlekœr̄'],
             ['faa', 'Faꞌà'],
             ['telang', 'Télǎng'],
-        ]),
+        ], ['Mmock']),
     ],
 ];

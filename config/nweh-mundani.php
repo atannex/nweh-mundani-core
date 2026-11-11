@@ -55,7 +55,7 @@ return [
     'versions' => [],
 
     'examples' => [
-        // Register the bundled Nweh, Mundae (Wabane), Mmouck and Mmock definitions.
+        // Register the bundled Nweh, Mundani (Wabane), M'Mouck and M'Mock definitions.
         'register' => (bool) env('NWEH_MUNDANI_EXAMPLES', true),
 
         // Register reference Gregorian, Julian, tabular Hijri and Hebrew

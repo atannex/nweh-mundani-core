@@ -53,7 +53,7 @@ it('builds a month a frontend can render without date maths', function () {
 });
 
 it('serialises to a stable, presentation-free array', function () {
-    $json = json_encode(queries()->month('mundae-wabane', 2026, 10), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    $json = json_encode(queries()->month('mundani-wabane', 2026, 10), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
 
     expect(array_keys($data))->toBe(['calendar', 'year', 'month', 'start', 'end', 'days_in_month', 'first_iso_weekday', 'days', 'navigation'])
@@ -109,7 +109,7 @@ it('caps request-sized ranges', function () {
 });
 
 it('lists calendars and details them, with sources and validation', function () {
-    expect(array_map(fn ($c) => $c->id, queries()->listCalendars()))->toBe(['mmock', 'mmouck', 'mundae-wabane', 'nweh']);
+    expect(array_map(fn ($c) => $c->id, queries()->listCalendars()))->toBe(['mmock', 'mmouck', 'mundani-wabane', 'nweh']);
 
     $details = queries()->getCalendar('mmouck')->toArray();
 
@@ -208,7 +208,7 @@ it('serves a Blade page and a JSON API through a thin controller', function () {
     Route::get('/calendars/{calendar}/{year}/{month}', [CalendarController::class, 'month']);
     Route::get('/api/calendars/{calendar}/{year}/{month}', [CalendarController::class, 'api']);
 
-    $this->get('/calendars/mmock/2026/10')->assertOk()->assertSee('Mmock 2026-10')->assertSee('<li data-date="2026-10-04">Ngong</li>', false);
+    $this->get('/calendars/mmock/2026/10')->assertOk()->assertSee('M\'Mock 2026-10')->assertSee('<li data-date="2026-10-04">Ngong</li>', false);
     $this->getJson('/api/calendars/nweh/2026/10')->assertOk()->assertJsonPath('days.27.label', 'Amina')->assertJsonPath('calendar.id', 'nweh');
     $this->getJson('/api/calendars/atlantis/2026/10')->assertNotFound()->assertJsonPath('error', 'calendar-not-found');
 });

@@ -122,7 +122,7 @@ it('serves stored calendars through the facade with the right precedence', funct
     expect(NwehMundani::calendar('nweh')->name())->toBe('Stored Nweh')
         ->and(NwehMundani::forTenant('acme')->calendar('nweh')->name())->toBe('Tenant Nweh')
         ->and(NwehMundani::forTenant('other')->calendar('nweh')->name())->toBe('Stored Nweh')
-        ->and(NwehMundani::calendar('mmock')->name())->toBe('Mmock');
+        ->and(NwehMundani::calendar('mmock')->name())->toBe("M'Mock");
 });
 
 it('never exposes drafts as the active calendar', function () {

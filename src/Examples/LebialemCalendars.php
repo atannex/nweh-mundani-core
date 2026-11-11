@@ -7,14 +7,14 @@ namespace Atannex\NwehMundani\Core\Examples;
 use Atannex\NwehMundani\Core\Contracts\CalendarDefinitionProvider;
 
 /**
- * The bundled reference datasets (Nweh, Mundae (Wabane), Mmouck, Mmock),
+ * The bundled reference datasets (Nweh, Mundani (Wabane), M'Mouck, M'Mock),
  * read from resources/definitions/lebialem.php. Registered automatically
  * when config('nweh-mundani.examples.register') is true, and seeded into
  * the database by `php artisan nweh-mundani:seed-examples`.
  */
 final class LebialemCalendars implements CalendarDefinitionProvider
 {
-    public const array IDS = ['nweh', 'mundae-wabane', 'mmouck', 'mmock'];
+    public const array IDS = ['nweh', 'mundani-wabane', 'mmouck', 'mmock'];
 
     /** @var array{sources: list<array<string, mixed>>, calendars: list<array<string, mixed>>}|null */
     private ?array $data = null;
