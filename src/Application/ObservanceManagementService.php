@@ -184,8 +184,8 @@ final readonly class ObservanceManagementService
     }
 
     /**
-     * Save as-is (status from the data; published when absent). Kept for
-     * CalendarAdministration::saveObservance() compatibility.
+     * Save as-is (status from the data; published when absent). create() and
+     * update() go through here; call it directly to write a whole record.
      */
     public function save(Observance $observance, Authenticatable|SystemActor|null $actor, CalendarContext $context, string $action = 'saved'): Observance
     {

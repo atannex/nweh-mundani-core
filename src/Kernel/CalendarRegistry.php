@@ -39,7 +39,7 @@ final class CalendarRegistry
     public function register(CalendarDefinition $definition): CalendarDefinition
     {
         if ($definition->version->status !== VersionStatus::Published) {
-            throw InvalidDefinition::single($definition->id(), 'status', 'Only published definitions can be registered in code; manage drafts through CalendarAdministration.');
+            throw InvalidDefinition::single($definition->id(), 'status', 'Only published definitions can be registered in code; manage drafts through CalendarWorkflowService.');
         }
 
         $this->validator->validate($definition)->throwIfFailed();

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Atannex\NwehMundani\Core\Application\CalendarWorkflowService;
+use Atannex\NwehMundani\Core\Application\ObservanceManagementService;
 use Atannex\NwehMundani\Core\Cache\DefinitionCache;
 use Atannex\NwehMundani\Core\Events\CalendarDraftSaved;
 use Atannex\NwehMundani\Core\Events\CalendarVersionPublished;
@@ -16,11 +17,12 @@ use Atannex\NwehMundani\Core\Exceptions\TenantViolation;
 use Atannex\NwehMundani\Core\Exceptions\UnauthorizedModification;
 use Atannex\NwehMundani\Core\Exceptions\UnknownRuleType;
 use Atannex\NwehMundani\Core\Facades\NwehMundani;
-use Atannex\NwehMundani\Core\Governance\CalendarAdministration;
 use Atannex\NwehMundani\Core\Governance\CalendarAuthorizer;
 use Atannex\NwehMundani\Core\Governance\SystemActor;
 use Atannex\NwehMundani\Core\Governance\VerificationStatus;
 use Atannex\NwehMundani\Core\Kernel\CalendarContext;
+use Atannex\NwehMundani\Core\Observances\Observance;
+use Atannex\NwehMundani\Core\Observances\ObservanceFactory;
 use Atannex\NwehMundani\Core\Persistence\Contracts\AuditTrail;
 use Atannex\NwehMundani\Core\Persistence\Eloquent\Models\RevisionLogRecord;
 use Illuminate\Foundation\Auth\User;
@@ -28,9 +30,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 
-function admin(): CalendarAdministration
+function workflow(): CalendarWorkflowService
 {
-    return app(CalendarAdministration::class);
+    return app(CalendarWorkflowService::class);
+}
+
+/** Save an observance as-is, the way a stored record is written. */
+function saveObservance(array $data, ?string $tenant = null): Observance
+{
+    $context = ctx($tenant);
+
+    return app(ObservanceManagementService::class)->save(app(ObservanceFactory::class)->fromArray($data, $context->tenant), systemActor(), $context);
 }
 
 function systemActor(): SystemActor
@@ -45,20 +55,19 @@ function ctx(?string $tenant = null): CalendarContext
 
 function publishCalendar(array $data, ?string $tenant = null): void
 {
-    $workflow = app(CalendarWorkflowService::class);
     $version = $data['version'] ?? '1.0.0';
 
-    admin()->saveDraft($data, systemActor(), ctx($tenant));
-    $workflow->submitForReview($data['id'], $version, systemActor(), context: ctx($tenant));
-    $workflow->approve($data['id'], $version, systemActor(), context: ctx($tenant));
-    admin()->publish($data['id'], $version, systemActor(), ctx($tenant));
+    workflow()->saveDraft($data, systemActor(), ctx($tenant));
+    workflow()->submitForReview($data['id'], $version, systemActor(), context: ctx($tenant));
+    workflow()->approve($data['id'], $version, systemActor(), context: ctx($tenant));
+    workflow()->publish($data['id'], $version, systemActor(), ctx($tenant));
 }
 
 it('denies anonymous actors and actors without a defined ability', function () {
     $user = (new User)->forceFill(['id' => 7]);
 
-    expect(fn () => admin()->saveDraft(cyclicCalendar('x'), null, ctx()))->toThrow(UnauthorizedModification::class)
-        ->and(fn () => admin()->saveDraft(cyclicCalendar('x'), $user, ctx()))->toThrow(UnauthorizedModification::class)
+    expect(fn () => workflow()->saveDraft(cyclicCalendar('x'), null, ctx()))->toThrow(UnauthorizedModification::class)
+        ->and(fn () => workflow()->saveDraft(cyclicCalendar('x'), $user, ctx()))->toThrow(UnauthorizedModification::class)
         ->and(DB::table('nmc_calendars')->count())->toBe(0);
 });
 
@@ -71,28 +80,28 @@ it('delegates to Gate abilities with the tenant and subject', function () {
         return $user->id === 1 && $tenant === 'acme';
     });
 
-    admin()->saveDraft(cyclicCalendar('ok'), $editor, ctx('acme'));
+    workflow()->saveDraft(cyclicCalendar('ok'), $editor, ctx('acme'));
 
     expect($seen)->toBe([['acme', 'ok']])
-        ->and(fn () => admin()->saveDraft(cyclicCalendar('nope'), $editor, ctx('other')))->toThrow(UnauthorizedModification::class)
+        ->and(fn () => workflow()->saveDraft(cyclicCalendar('nope'), $editor, ctx('other')))->toThrow(UnauthorizedModification::class)
         // Saving a draft does not grant publishing.
-        ->and(fn () => admin()->publish('ok', '1.0.0', $editor, ctx('acme')))->toThrow(UnauthorizedModification::class);
+        ->and(fn () => workflow()->publish('ok', '1.0.0', $editor, ctx('acme')))->toThrow(UnauthorizedModification::class);
 });
 
 it('keeps writes inside the context tenant', function () {
     $foreign = definition(cyclicCalendar('foreign'), 'tenant-b');
 
-    expect(fn () => admin()->saveDraft($foreign, systemActor(), ctx('tenant-a')))->toThrow(TenantViolation::class);
+    expect(fn () => workflow()->saveDraft($foreign, systemActor(), ctx('tenant-a')))->toThrow(TenantViolation::class);
 });
 
 it('validates before publishing and leaves everything unchanged on failure', function () {
-    admin()->saveDraft(cyclicCalendar('bad', cycle: ['anchors' => [
+    workflow()->saveDraft(cyclicCalendar('bad', cycle: ['anchors' => [
         ['id' => 'a', 'date' => '2026-10-01', 'position' => 'p1'],
         ['id' => 'b', 'date' => '2026-10-01', 'position' => 'p2'],
     ]]), systemActor(), ctx());
 
-    expect(fn () => app(CalendarWorkflowService::class)->submitForReview('bad', '1.0.0', systemActor(), context: ctx()))->toThrow(InvalidDefinition::class)
-        ->and(fn () => admin()->publish('bad', '1.0.0', systemActor(), ctx()))->toThrow(InvalidTransition::class)
+    expect(fn () => workflow()->submitForReview('bad', '1.0.0', systemActor(), context: ctx()))->toThrow(InvalidDefinition::class)
+        ->and(fn () => workflow()->publish('bad', '1.0.0', systemActor(), ctx()))->toThrow(InvalidTransition::class)
         ->and(DB::table('nmc_calendar_versions')->value('status'))->toBe('draft')
         ->and(RevisionLogRecord::query()->where('action', 'published')->count())->toBe(0);
 });
@@ -100,8 +109,8 @@ it('validates before publishing and leaves everything unchanged on failure', fun
 it('only lets versions move forward', function () {
     publishCalendar(cyclicCalendar('mono', overrides: ['version' => '2.0.0']));
 
-    expect(fn () => admin()->saveDraft(cyclicCalendar('mono', overrides: ['version' => '1.5.0']), systemActor(), ctx()))->toThrow(InvalidDefinition::class, 'newer')
-        ->and(fn () => admin()->saveDraft(cyclicCalendar('mono', overrides: ['version' => '2.0.0']), systemActor(), ctx()))->toThrow(ImmutableVersion::class);
+    expect(fn () => workflow()->saveDraft(cyclicCalendar('mono', overrides: ['version' => '1.5.0']), systemActor(), ctx()))->toThrow(InvalidDefinition::class, 'newer')
+        ->and(fn () => workflow()->saveDraft(cyclicCalendar('mono', overrides: ['version' => '2.0.0']), systemActor(), ctx()))->toThrow(ImmutableVersion::class);
 });
 
 it('serves stored calendars through the facade with the right precedence', function () {
@@ -117,7 +126,7 @@ it('serves stored calendars through the facade with the right precedence', funct
 });
 
 it('never exposes drafts as the active calendar', function () {
-    admin()->saveDraft(cyclicCalendar('drafty'), systemActor(), ctx());
+    workflow()->saveDraft(cyclicCalendar('drafty'), systemActor(), ctx());
 
     expect(fn () => NwehMundani::calendar('drafty'))->toThrow(CalendarNotFound::class)
         ->and(NwehMundani::calendar('drafty', '1.0.0')->version())->toBe('1.0.0');
@@ -153,34 +162,34 @@ it('stores observances, checks their rules against the calendar and keeps tenant
     publishCalendar(cyclicCalendar('town'), 'acme');
     $market = ['id' => 'market', 'calendar' => 'town', 'name' => 'Market', 'category' => 'market', 'rules' => [['type' => 'cycle-position', 'parameters' => ['cycle' => 'days', 'positions' => ['p2']]]]];
 
-    admin()->saveObservance($market, systemActor(), ctx('acme'));
+    saveObservance($market, 'acme');
 
     expect(array_map(fn ($o) => $o->id, NwehMundani::forTenant('acme')->calendar('town')->observancesOn('2026-10-02')))->toBe(['market'])
         // Another tenant cannot attach to (or even see) acme's calendar.
-        ->and(fn () => admin()->saveObservance($market, systemActor(), ctx('rival')))->toThrow(CalendarNotFound::class)
-        ->and(fn () => admin()->saveObservance([...$market, 'rules' => [['type' => 'cycle-position', 'parameters' => ['cycle' => 'days', 'positions' => ['p99']]]]], systemActor(), ctx('acme')))->toThrow(InvalidDefinition::class)
-        ->and(fn () => admin()->saveObservance([...$market, 'rules' => [['type' => 'eval', 'parameters' => []]]], systemActor(), ctx('acme')))->toThrow(UnknownRuleType::class);
+        ->and(fn () => saveObservance($market, 'rival'))->toThrow(CalendarNotFound::class)
+        ->and(fn () => saveObservance([...$market, 'rules' => [['type' => 'cycle-position', 'parameters' => ['cycle' => 'days', 'positions' => ['p99']]]]], 'acme'))->toThrow(InvalidDefinition::class)
+        ->and(fn () => saveObservance([...$market, 'rules' => [['type' => 'eval', 'parameters' => []]]], 'acme'))->toThrow(UnknownRuleType::class);
 });
 
 it('lets tenants add observances to global calendars without leaking them', function () {
-    admin()->saveObservance(['id' => 'meeting', 'calendar' => 'nweh', 'name' => 'Meeting', 'category' => 'meeting', 'rules' => [['type' => 'fixed-date', 'parameters' => ['date' => '2026-10-28']]]], systemActor(), ctx('acme'));
+    saveObservance(['id' => 'meeting', 'calendar' => 'nweh', 'name' => 'Meeting', 'category' => 'meeting', 'rules' => [['type' => 'fixed-date', 'parameters' => ['date' => '2026-10-28']]]], 'acme');
 
     expect(NwehMundani::forTenant('acme')->calendar('nweh')->observancesOn('2026-10-28'))->toHaveCount(1)
         ->and(NwehMundani::forTenant('rival')->calendar('nweh')->observancesOn('2026-10-28'))->toBe([])
         ->and(NwehMundani::calendar('nweh')->observancesOn('2026-10-28'))->toBe([]);
 
-    admin()->deleteObservance('nweh', 'meeting', systemActor(), ctx('acme'));
+    app(ObservanceManagementService::class)->delete('nweh', 'meeting', systemActor(), ctx('acme'));
     expect(NwehMundani::forTenant('acme')->calendar('nweh')->observancesOn('2026-10-28'))->toBe([]);
 });
 
 it('enforces verification transitions and keeps them apart from validity', function () {
-    admin()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::Submitted, systemActor(), ctx());
-    admin()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::UnderReview, systemActor(), ctx());
+    workflow()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::Submitted, systemActor(), ctx());
+    workflow()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::UnderReview, systemActor(), ctx());
 
-    expect(fn () => admin()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::Superseded, systemActor(), ctx()))->toThrow(InvalidDefinition::class, 'cannot move')
-        ->and(fn () => admin()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::Verified, null, ctx()))->toThrow(UnauthorizedModification::class);
+    expect(fn () => workflow()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::Superseded, systemActor(), ctx()))->toThrow(InvalidDefinition::class, 'cannot move')
+        ->and(fn () => workflow()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::Verified, null, ctx()))->toThrow(UnauthorizedModification::class);
 
-    admin()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::Disputed, systemActor(), ctx(), 'Two custodians disagree on the anchor.');
+    workflow()->recordVerification('calendar', 'nweh@1.0.0', VerificationStatus::Disputed, systemActor(), ctx(), 'Two custodians disagree on the anchor.');
 
     expect(array_map(fn ($v) => $v->status->value, app(AuditTrail::class)->verifications('', 'calendar', 'nweh@1.0.0')))->toBe(['submitted', 'under-review', 'disputed'])
         ->and(app(AuditTrail::class)->verifications('acme', 'calendar', 'nweh@1.0.0'))->toBe([]);
@@ -200,8 +209,8 @@ it('dispatches scalar-only events after commit', function () {
     Event::fake();
 
     publishCalendar(cyclicCalendar('evented'), 'acme');
-    admin()->saveObservance(['id' => 'o', 'calendar' => 'evented', 'name' => 'O', 'category' => 'custom', 'rules' => [['type' => 'fixed-date', 'parameters' => ['month' => 1, 'day' => 1]]]], systemActor(), ctx('acme'));
-    admin()->recordVerification('observance', 'evented/o', VerificationStatus::Submitted, systemActor(), ctx('acme'));
+    saveObservance(['id' => 'o', 'calendar' => 'evented', 'name' => 'O', 'category' => 'custom', 'rules' => [['type' => 'fixed-date', 'parameters' => ['month' => 1, 'day' => 1]]]], 'acme');
+    workflow()->recordVerification('observance', 'evented/o', VerificationStatus::Submitted, systemActor(), ctx('acme'));
 
     Event::assertDispatched(CalendarDraftSaved::class, fn ($e) => $e->tenant === 'acme' && $e->calendar === 'evented');
     Event::assertDispatched(CalendarVersionPublished::class, fn ($e) => $e->tenant === 'acme' && $e->version === '1.0.0' && $e->superseded === null);
@@ -213,7 +222,7 @@ it('rolls back the audit entry when the write fails', function () {
     publishCalendar(cyclicCalendar('once'));
     $before = RevisionLogRecord::query()->count();
 
-    expect(fn () => admin()->publish('once', '1.0.0', systemActor(), ctx()))->toThrow(ImmutableVersion::class)
+    expect(fn () => workflow()->publish('once', '1.0.0', systemActor(), ctx()))->toThrow(ImmutableVersion::class)
         ->and(RevisionLogRecord::query()->count())->toBe($before);
 });
 

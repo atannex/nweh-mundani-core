@@ -22,7 +22,7 @@ use Atannex\NwehMundani\Core\Persistence\VersionSummary;
  *
  * Every method works on exactly one tenant key; '' is the global scope.
  * Falling back from a tenant to the global scope is the resolver's job.
- * Authorisation is the caller's job (see CalendarAdministration).
+ * Authorisation is the caller's job (see CalendarWorkflowService).
  */
 interface CalendarRepository
 {

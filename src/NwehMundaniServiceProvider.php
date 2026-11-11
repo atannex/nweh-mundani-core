@@ -28,7 +28,6 @@ use Atannex\NwehMundani\Core\Drivers\DriverRegistry;
 use Atannex\NwehMundani\Core\Examples\LebialemCalendars;
 use Atannex\NwehMundani\Core\Examples\ReferenceCalendars;
 use Atannex\NwehMundani\Core\Exceptions\UnsafeRegistration;
-use Atannex\NwehMundani\Core\Governance\CalendarAdministration;
 use Atannex\NwehMundani\Core\Governance\CalendarAuthorizer;
 use Atannex\NwehMundani\Core\Governance\GateCalendarAuthorizer;
 use Atannex\NwehMundani\Core\Governance\Source;
@@ -263,8 +262,6 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             self::int('queries.max_range_days', 1830),
             self::int('queries.max_calendars', 50),
         ));
-
-        $this->app->singleton(CalendarAdministration::class);
 
         $this->app->singleton(CalendarManager::class, static function (Container $app): CalendarManager {
             $locale = config('nweh-mundani.locale');
