@@ -95,5 +95,8 @@ it('reports Spatie in the diagnostics', function () {
 });
 
 it('treats one shared database as shared, so its migrations load as usual', function () {
-    expect(SpatieMultitenancy::databasePerTenant())->toBeFalse();
+    $loaded = array_map(fn (string $path) => basename($path), app('migrator')->paths());
+
+    expect(SpatieMultitenancy::databasePerTenant())->toBeFalse()
+        ->and($loaded)->toContain('2026_10_28_000000_create_nweh_mundani_tables.php');
 });

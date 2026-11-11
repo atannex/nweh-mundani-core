@@ -36,7 +36,10 @@ it('keeps the tables on the landlord connection, apart from every tenant databas
 });
 
 it('treats the setup as a database per tenant, so its migrations stay out of tenants:artisan migrate', function () {
-    expect(SpatieMultitenancy::databasePerTenant())->toBeTrue();
+    $loaded = array_map(fn (string $path) => basename($path), app('migrator')->paths());
+
+    expect(SpatieMultitenancy::databasePerTenant())->toBeTrue()
+        ->and($loaded)->not->toContain('2026_10_28_000000_create_nweh_mundani_tables.php');
 });
 
 it('reports the landlord storage, and refuses tables on the tenant connection', function () {

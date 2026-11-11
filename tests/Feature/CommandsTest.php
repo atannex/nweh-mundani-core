@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+use Atannex\NwehMundani\Core\NwehMundaniServiceProvider;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\ServiceProvider;
 
 it('lists calendars', function () {
     $this->artisan('nweh-mundani:list')
@@ -58,4 +61,13 @@ it('diagnoses the installation', function () {
 
 it('refuses to seed when persistence is off', function () {
     $this->artisan('nweh-mundani:seed-examples')->expectsOutputToContain('Persistence is disabled')->assertFailed();
+});
+
+it('registers the commands, the install command and the publish tags', function () {
+    $provider = NwehMundaniServiceProvider::class;
+
+    expect(array_keys(Artisan::all()))->toContain('nweh-mundani:install', 'nweh-mundani:diagnose', 'nweh-mundani:seed-examples')
+        ->and(ServiceProvider::pathsToPublish($provider, 'nweh-mundani-config'))->toHaveCount(1)
+        ->and(ServiceProvider::pathsToPublish($provider, 'nweh-mundani-migrations'))->toHaveCount(4)
+        ->and(ServiceProvider::pathsToPublish($provider, 'nweh-mundani-landlord-migrations'))->toHaveCount(1);
 });

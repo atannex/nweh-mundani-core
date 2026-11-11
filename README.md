@@ -14,14 +14,25 @@ There are no routes or views in here. You get the calculations, storage and a pu
 
 ```bash
 composer require atannex/nweh-mundani-core
-php artisan migrate
+php artisan nweh-mundani:install
+```
+
+The install command publishes the config file and offers to run the migrations. Then check that everything works:
+
+```bash
 php artisan nweh-mundani:diagnose
 ```
 
-The service provider and the `NwehMundani` facade are auto-discovered. To change the defaults, publish the config:
+The service provider and the `NwehMundani` facade are auto-discovered.
+
+The migrations run straight from the package. If you'd rather keep your own copy, publish them and turn off the package's copy, or they'll run twice:
 
 ```bash
-php artisan vendor:publish --tag=nweh-mundani-config
+php artisan vendor:publish --tag=nweh-mundani-migrations
+```
+
+```env
+NWEH_MUNDANI_RUN_MIGRATIONS=false
 ```
 
 If you don't need a database, set `NWEH_MUNDANI_PERSISTENCE=false`. Calendars registered in code keep working.

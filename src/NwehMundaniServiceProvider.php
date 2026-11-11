@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types = 1);
 
 namespace Atannex\NwehMundani\Core;
 
@@ -86,10 +86,12 @@ use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Support\ServiceProvider;
+use Spatie\LaravelPackageTools\Commands\InstallCommand;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Throwable;
 
-final class NwehMundaniServiceProvider extends ServiceProvider
+final class NwehMundaniServiceProvider extends PackageServiceProvider
 {
     public const string TAG_DRIVERS = 'nweh-mundani.drivers';
 
@@ -101,12 +103,33 @@ final class NwehMundaniServiceProvider extends ServiceProvider
 
     public const string TAG_PROVIDERS = 'nweh-mundani.providers';
 
-    public function register(): void
+    public function configurePackage(Package $package): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/nweh-mundani.php', 'nweh-mundani');
+        $package
+            ->name('nweh-mundani')
+            ->hasConfigFile()
+            ->discoversMigrations()
+            ->hasConsoleCommands([
+                ListCommand::class,
+                ShowCommand::class,
+                DateCommand::class,
+                CompareCommand::class,
+                ValidateCommand::class,
+                DiagnoseCommand::class,
+                SeedExamplesCommand::class,
+            ])
+            ->hasInstallCommand(function (InstallCommand $command): void {
+                $command
+                    ->publishConfigFile()
+                    ->askToRunMigrations()
+                    ->endWith(function (InstallCommand $command): void {
+                        $command->info('Run `php artisan nweh-mundani:diagnose` to check the installation.');
+                    });
+            });
+    }
 
-        // Taken before any tenant is made current: tenancy packages (Spatie's
-        // PrefixCacheTask, for one) change cache.prefix per tenant at runtime.
+    public function packageRegistered(): void
+    {
         $cachePrefix = config('cache.prefix');
 
         $this->app->singleton(DriverRegistry::class, function (Container $app): DriverRegistry {
@@ -116,7 +139,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             $registry->register(TabularLunarDriver::class);
             $registry->register(HebrewDriver::class);
 
-            foreach ([...$this->classes('drivers'), ...$this->tagged(self::TAG_DRIVERS)] as $driver) {
+            foreach ([ ...$this->classes('drivers'), ...$this->tagged(self::TAG_DRIVERS)] as $driver) {
                 $registry->register($this->trusted($driver, CalendarDriver::class));
             }
 
@@ -130,30 +153,29 @@ final class NwehMundaniServiceProvider extends ServiceProvider
                 $registry->register($handler);
             }
 
-            foreach ([...$this->classes('rule_handlers'), ...$this->tagged(self::TAG_RULE_HANDLERS)] as $handler) {
+            foreach ([ ...$this->classes('rule_handlers'), ...$this->tagged(self::TAG_RULE_HANDLERS)] as $handler) {
                 $registry->register($this->trusted($handler, RuleHandler::class));
             }
 
             return $registry;
         });
 
-        // Not shared: the factory collects violations while it builds.
         $this->app->bind(CalendarFactory::class);
         $this->app->singleton(ObservanceFactory::class);
         $this->app->singleton(CalendarValidator::class);
 
         $this->app->scoped(TranslationMemo::class);
-        $this->app->singleton(TranslationCatalog::class, static fn (Container $app): TranslationCatalog => new TranslationCatalog(
+        $this->app->singleton(TranslationCatalog::class, static fn(Container $app): TranslationCatalog => new TranslationCatalog(
             $app->make(TranslationRepository::class),
             $app->make(DefinitionCache::class),
-            static fn (): TranslationMemo => $app->make(TranslationMemo::class),
+            static fn(): TranslationMemo => $app->make(TranslationMemo::class),
         ));
 
         $this->app->singleton(Localizer::class, function (Container $app): Localizer {
             $localizer = new Localizer;
             $localizer->addProvider($app->make(TranslationCatalog::class));
 
-            foreach ([...$this->classes('localization_providers'), ...$this->tagged(self::TAG_LOCALIZATION_PROVIDERS)] as $provider) {
+            foreach ([ ...$this->classes('localization_providers'), ...$this->tagged(self::TAG_LOCALIZATION_PROVIDERS)] as $provider) {
                 $localizer->addProvider($this->trusted($provider, LocalizationProvider::class));
             }
 
@@ -165,8 +187,8 @@ final class NwehMundaniServiceProvider extends ServiceProvider
 
             return match (true) {
                 $class === SpatieMultitenancy::ALIAS => new SpatieTenantResolver,
-                is_string($class) && $class !== '' => $this->trusted($class, TenantResolver::class),
-                default => new NullTenantResolver,
+                is_string($class) && $class !== ''   => $this->trusted($class, TenantResolver::class),
+                default                              => new NullTenantResolver,
             };
         });
 
@@ -184,7 +206,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             }
 
             $prefix = config('nweh-mundani.cache.prefix', 'nmc');
-            $ttl = config('nweh-mundani.cache.ttl', 3600);
+            $ttl    = config('nweh-mundani.cache.ttl', 3600);
 
             return new DefinitionCache($store, $app->make(CalendarFactory::class), $app->make(ObservanceFactory::class), is_string($prefix) ? $prefix : 'nmc', is_int($ttl) ? $ttl : 3600);
         });
@@ -192,14 +214,14 @@ final class NwehMundaniServiceProvider extends ServiceProvider
         $this->registerPersistence();
         $this->registerStaticCatalog();
 
-        $this->app->singleton(CalendarResolver::class, static fn (Container $app): CalendarResolver => new CalendarResolver(
+        $this->app->singleton(CalendarResolver::class, static fn(Container $app): CalendarResolver => new CalendarResolver(
             $app->make(CalendarRegistry::class),
             $app->make(CalendarRepository::class),
             $app->make(DefinitionCache::class),
             (bool) config('nweh-mundani.tenancy.allow_shadowing', false),
         ));
 
-        $this->app->singleton(ObservanceGate::class, static fn (Container $app): ObservanceGate => new ObservanceGate($app->bound(Gate::class) ? $app->make(Gate::class) : null));
+        $this->app->singleton(ObservanceGate::class, static fn(Container $app): ObservanceGate => new ObservanceGate($app->bound(Gate::class) ? $app->make(Gate::class) : null));
 
         $this->app->singleton(ObservanceService::class, function (Container $app): ObservanceService {
             $service = new ObservanceService($app->make(RuleRegistry::class), $app->make(ObservanceGate::class));
@@ -208,22 +230,22 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             $service->addResolver(new RepositoryObservanceResolver($app->make(ObservanceRepository::class), $app->make(DefinitionCache::class)));
             $service->addResolver(new StaticObservanceResolver($app->make(CalendarRegistry::class), $app->make('nweh-mundani.static-observances')));
 
-            foreach ([...$this->classes('observance_resolvers'), ...$this->tagged(self::TAG_OBSERVANCE_RESOLVERS)] as $resolver) {
+            foreach ([ ...$this->classes('observance_resolvers'), ...$this->tagged(self::TAG_OBSERVANCE_RESOLVERS)] as $resolver) {
                 $service->addResolver($this->trusted($resolver, ObservanceResolver::class));
             }
 
             return $service;
         });
 
-        $this->app->singleton(SourceCatalog::class, static fn (Container $app): SourceCatalog => new SourceCatalog(
+        $this->app->singleton(SourceCatalog::class, static fn(Container $app): SourceCatalog => new SourceCatalog(
             $app->make(SourceRepository::class),
             $app->make('nweh-mundani.static-sources'),
             $app->make(CalendarRegistry::class),
         ));
 
-        $this->app->singleton(CalendarViewBuilder::class, static fn (): CalendarViewBuilder => new CalendarViewBuilder(self::int('queries.max_range_days', 1830)));
+        $this->app->singleton(CalendarViewBuilder::class, static fn(): CalendarViewBuilder => new CalendarViewBuilder(self::int('queries.max_range_days', 1830)));
 
-        $this->app->singleton(CalendarWorkflowService::class, static fn (Container $app): CalendarWorkflowService => new CalendarWorkflowService(
+        $this->app->singleton(CalendarWorkflowService::class, static fn(Container $app): CalendarWorkflowService => new CalendarWorkflowService(
             $app->make(CalendarManager::class),
             $app->make(CalendarRepository::class),
             $app->make(SourceRepository::class),
@@ -241,7 +263,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             (bool) config('nweh-mundani.workflow.require_sources', false),
         ));
 
-        $this->app->singleton(ObservanceManagementService::class, static fn (Container $app): ObservanceManagementService => new ObservanceManagementService(
+        $this->app->singleton(ObservanceManagementService::class, static fn(Container $app): ObservanceManagementService => new ObservanceManagementService(
             $app->make(CalendarManager::class),
             $app->make(ObservanceRepository::class),
             $app->make(ObservanceFactory::class),
@@ -253,7 +275,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             $app->bound('events') ? $app->make(Dispatcher::class) : null,
         ));
 
-        $this->app->singleton(TranslationManagementService::class, static fn (Container $app): TranslationManagementService => new TranslationManagementService(
+        $this->app->singleton(TranslationManagementService::class, static fn(Container $app): TranslationManagementService => new TranslationManagementService(
             $app->make(CalendarManager::class),
             $app->make(TranslationRepository::class),
             $app->make(TranslationCatalog::class),
@@ -263,7 +285,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             $app->bound('events') ? $app->make(Dispatcher::class) : null,
         ));
 
-        $this->app->singleton(CalendarQueryService::class, static fn (Container $app): CalendarQueryService => new CalendarQueryService(
+        $this->app->singleton(CalendarQueryService::class, static fn(Container $app): CalendarQueryService => new CalendarQueryService(
             $app->make(CalendarManager::class),
             $app->make(CalendarRepository::class),
             $app->make(AuditTrail::class),
@@ -277,7 +299,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(CalendarManager::class, static function (Container $app): CalendarManager {
-            $locale = config('nweh-mundani.locale');
+            $locale   = config('nweh-mundani.locale');
             $timezone = config('nweh-mundani.timezone', 'UTC');
 
             return new CalendarManager(
@@ -304,7 +326,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(CalendarDiagnostics::class, static fn (Container $app): CalendarDiagnostics => new CalendarDiagnostics(
+        $this->app->singleton(CalendarDiagnostics::class, static fn(Container $app): CalendarDiagnostics => new CalendarDiagnostics(
             $app->make(DriverRegistry::class),
             $app->make(RuleRegistry::class),
             $app->make(CalendarResolver::class),
@@ -318,51 +340,39 @@ final class NwehMundaniServiceProvider extends ServiceProvider
         ));
     }
 
-    public function boot(): void
+    public function bootingPackage(): void
     {
-        // With a database per tenant, the tables belong to the landlord
-        // database. Loading the migrations would also run them from
-        // `tenants:artisan migrate`, so they are published to the landlord
-        // path instead (nweh-mundani-landlord-migrations).
-        if (config('nweh-mundani.persistence.enabled') && config('nweh-mundani.persistence.migrations', true) && ! SpatieMultitenancy::databasePerTenant()) {
-            $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        }
+        $this->package->runsMigrations(
+            (bool) config('nweh-mundani.persistence.enabled')
+            && (bool) config('nweh-mundani.persistence.migrations', true)
+            && ! SpatieMultitenancy::databasePerTenant(),
+        );
+    }
 
+    public function packageBooted(): void
+    {
         if ($this->app->runningInConsole()) {
-            $this->publishes([__DIR__.'/../config/nweh-mundani.php' => config_path('nweh-mundani.php')], 'nweh-mundani-config');
-            $this->publishes([__DIR__.'/../database/migrations' => database_path('migrations')], 'nweh-mundani-migrations');
-            $this->publishes([__DIR__.'/../database/migrations' => database_path('migrations/landlord')], 'nweh-mundani-landlord-migrations');
-
-            $this->commands([
-                ListCommand::class,
-                ShowCommand::class,
-                DateCommand::class,
-                CompareCommand::class,
-                ValidateCommand::class,
-                DiagnoseCommand::class,
-                SeedExamplesCommand::class,
-            ]);
+            $this->publishes([$this->package->basePath('/../database/migrations') => database_path('migrations/landlord')], 'nweh-mundani-landlord-migrations');
         }
     }
 
     private function registerPersistence(): void
     {
-        // Read when first resolved, not at registration, so config set later applies.
-        $enabled = static fn (): bool => (bool) config('nweh-mundani.persistence.enabled');
+        $enabled = static fn(): bool => (bool) config('nweh-mundani.persistence.enabled');
 
-        $this->app->singleton(CalendarRepository::class, static fn (Container $app): CalendarRepository => $enabled()
-            ? new EloquentCalendarRepository($app->make(CalendarFactory::class))
-            : new InMemoryCalendarRepository);
+        $this->app->singleton(CalendarRepository::class, static fn(Container $app): CalendarRepository => $enabled()
+                ? new EloquentCalendarRepository($app->make(CalendarFactory::class))
+                : new InMemoryCalendarRepository);
 
-        $this->app->singleton(ObservanceRepository::class, static fn (Container $app): ObservanceRepository => $enabled()
-            ? new EloquentObservanceRepository($app->make(ObservanceFactory::class))
-            : new InMemoryObservanceRepository);
+        $this->app->singleton(ObservanceRepository::class, static fn(Container $app): ObservanceRepository => $enabled()
+                ? new EloquentObservanceRepository($app->make(ObservanceFactory::class))
+                : new InMemoryObservanceRepository);
 
-        $this->app->singleton(SourceRepository::class, static fn (): SourceRepository => $enabled() ? new EloquentSourceRepository : new InMemorySourceRepository);
+        $this->app->singleton(SourceRepository::class, static fn(): SourceRepository => $enabled() ? new EloquentSourceRepository : new InMemorySourceRepository);
 
-        $this->app->singleton(TranslationRepository::class, static fn (): TranslationRepository => $enabled() ? new EloquentTranslationRepository : new InMemoryTranslationRepository);
+        $this->app->singleton(TranslationRepository::class, static fn(): TranslationRepository => $enabled() ? new EloquentTranslationRepository : new InMemoryTranslationRepository);
 
-        $this->app->singleton(AuditTrail::class, static fn (): AuditTrail => $enabled() ? new EloquentAuditTrail : new InMemoryAuditTrail);
+        $this->app->singleton(AuditTrail::class, static fn(): AuditTrail => $enabled() ? new EloquentAuditTrail : new InMemoryAuditTrail);
 
         $this->app->singleton(UnitOfWork::class, static function (Container $app) use ($enabled): UnitOfWork {
             return $enabled() ? new DatabaseUnitOfWork($app->make('db'), StorageConnection::name()) : new ImmediateUnitOfWork;
@@ -375,11 +385,11 @@ final class NwehMundaniServiceProvider extends ServiceProvider
      */
     private function registerStaticCatalog(): void
     {
-        $this->app->singleton('nweh-mundani.static-observances', static fn (): InMemoryObservanceRepository => new InMemoryObservanceRepository);
-        $this->app->singleton('nweh-mundani.static-sources', static fn (): InMemorySourceRepository => new InMemorySourceRepository);
+        $this->app->singleton('nweh-mundani.static-observances', static fn(): InMemoryObservanceRepository => new InMemoryObservanceRepository);
+        $this->app->singleton('nweh-mundani.static-sources', static fn(): InMemorySourceRepository => new InMemorySourceRepository);
 
         $this->app->singleton(CalendarRegistry::class, function (Container $app): CalendarRegistry {
-            $pins = config('nweh-mundani.versions', []);
+            $pins     = config('nweh-mundani.versions', []);
             $registry = new CalendarRegistry($app->make(CalendarValidator::class), is_array($pins) ? array_filter($pins, 'is_string') : []);
 
             $registry->defer(function (CalendarRegistry $registry) use ($app): void {
@@ -392,7 +402,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
                 /** @var InMemorySourceRepository $sources */
                 $sources = $app->make('nweh-mundani.static-sources');
 
-                $providers = [...$this->classes('providers'), ...$this->tagged(self::TAG_PROVIDERS)];
+                $providers = [ ...$this->classes('providers'), ...$this->tagged(self::TAG_PROVIDERS)];
 
                 if (config('nweh-mundani.examples.register')) {
                     array_unshift($providers, LebialemCalendars::class);
@@ -403,14 +413,14 @@ final class NwehMundaniServiceProvider extends ServiceProvider
                 }
 
                 $sets = [[
-                    'calendars' => config('nweh-mundani.calendars', []),
+                    'calendars'   => config('nweh-mundani.calendars', []),
                     'observances' => config('nweh-mundani.observances', []),
-                    'sources' => config('nweh-mundani.sources', []),
+                    'sources'     => config('nweh-mundani.sources', []),
                 ]];
 
                 foreach ($providers as $provider) {
                     $provider = $this->trusted($provider, CalendarDefinitionProvider::class);
-                    $sets[] = ['calendars' => $provider->calendars(), 'observances' => $provider->observances(), 'sources' => $provider->sources()];
+                    $sets[]   = ['calendars' => $provider->calendars(), 'observances' => $provider->observances(), 'sources' => $provider->sources()];
                 }
 
                 foreach ($sets as $set) {
@@ -461,11 +471,11 @@ final class NwehMundaniServiceProvider extends ServiceProvider
      */
     private static function cacheStore(CacheFactory $cache, mixed $name, mixed $prefix): Repository
     {
-        $name = is_string($name) && $name !== '' ? $name : config('cache.default');
+        $name   = is_string($name) && $name !== '' ? $name : config('cache.default');
         $config = is_string($name) ? config("cache.stores.{$name}") : null;
 
         if ($cache instanceof CacheManager && is_array($config) && ! isset($config['prefix']) && is_string($prefix)) {
-            return $cache->build([...$config, 'prefix' => $prefix]);
+            return $cache->build([ ...$config, 'prefix' => $prefix]);
         }
 
         return $cache->store(is_string($name) ? $name : null);
@@ -479,7 +489,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
      * @param  class-string<T>  $interface
      * @return T
      */
-    private function trusted(object|string $extension, string $interface): object
+    private function trusted(object | string $extension, string $interface): object
     {
         if (is_string($extension)) {
             if (! class_exists($extension)) {
@@ -490,7 +500,7 @@ final class NwehMundaniServiceProvider extends ServiceProvider
         }
 
         if (! $extension instanceof $interface) {
-            throw UnsafeRegistration::because($extension::class." does not implement {$interface}.");
+            throw UnsafeRegistration::because($extension::class . " does not implement {$interface}.");
         }
 
         return $extension;

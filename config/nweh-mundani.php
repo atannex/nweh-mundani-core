@@ -104,7 +104,10 @@ return [
     'persistence' => [
         'enabled' => (bool) env('NWEH_MUNDANI_PERSISTENCE', true),
         'connection' => env('NWEH_MUNDANI_DB_CONNECTION'),
-        'migrations' => true,
+        // Run the package's migrations from the vendor folder. Set to false
+        // if you publish them (--tag=nweh-mundani-migrations), or they run
+        // twice under different file names.
+        'migrations' => (bool) env('NWEH_MUNDANI_RUN_MIGRATIONS', true),
     ],
 
     /*
